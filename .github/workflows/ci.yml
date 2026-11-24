@@ -15,14 +15,14 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # Splunk 9.x bundles Python 3.9. setup-python has no 3.9 build for newer runner images,
+    # so run in the official image instead.
+    container: python:3.9-slim
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.9"
+      - name: Install system packages
+        run: apt-get update -qq && apt-get install -y -qq --no-install-recommends make libmagic1
+      - uses: actions/checkout@v7.0.1
       - name: Install dev tools
-        run: |
-          sudo apt-get install -y -qq libmagic1
-          pip install -r requirements-dev.txt
+        run: pip install -q -r requirements-dev.txt
       - run: make check
       - run: make appinspect
