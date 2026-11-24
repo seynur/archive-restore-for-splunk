@@ -1,0 +1,18 @@
+# Build and caches
+dist/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+
+# Site config of a locally installed copy
+archive_restore/local/
+archive_restore/metadata/local.meta
+
+# Working notes (seynur-skills docs-layout)
+notes/
+
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,103 @@
+<form version="1.1" theme="light">
+  <label>Restore</label>
+  <description>Pick index(es) and a time range, press Submit to preview the archived buckets, then tick the confirmation and Submit again to restore them into each index's thaweddb.</description>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="multiselect" token="index" searchWhenChanged="false">
+      <label>Index</label>
+      <fieldForLabel>index</fieldForLabel>
+      <fieldForValue>index</fieldForValue>
+      <delimiter>,</delimiter>
+      <search>
+        <query>| archivelist | fields index</query>
+      </search>
+    </input>
+    <input type="time" token="tr" searchWhenChanged="false">
+      <label>Time range</label>
+      <default>
+        <earliest>-7d@d</earliest>
+        <latest>@d</latest>
+      </default>
+    </input>
+    <input type="checkbox" token="confirm" searchWhenChanged="false">
+      <label>Restore</label>
+      <choice value="yes">Restore the buckets listed below</choice>
+    </input>
+  </fieldset>
+  <search id="preview" depends="$index$">
+    <query>| archivelist index=$index|s$</query>
+    <earliest>$tr.earliest$</earliest>
+    <latest>$tr.latest$</latest>
+  </search>
+  <row>
+    <panel>
+      <title>Archive overview (all time)</title>
+      <table>
+        <search>
+          <query>| archivelist
+| eval earliest=strftime(earliest, "%F %T"), latest=strftime(latest, "%F %T"), GB=round(bytes/1024/1024/1024, 2)
+| table index buckets earliest latest GB</query>
+        </search>
+        <option name="count">10</option>
+      </table>
+    </panel>
+    <panel depends="$index$">
+      <title>Selection</title>
+      <table>
+        <search base="preview">
+          <query>| stats count AS buckets, sum(bytes) AS bytes, count(eval(state="thawed")) AS already_thawed, count(eval(state="index_missing")) AS index_missing BY index
+| eval GB=round(bytes/1024/1024/1024, 2) | fields - bytes</query>
+        </search>
+      </table>
+    </panel>
+  </row>
+  <row depends="$index$">
+    <panel>
+      <title>Archived buckets in range</title>
+      <table>
+        <search base="preview">
+          <query>| eval earliest=strftime(earliest, "%F %T"), latest=strftime(latest, "%F %T"), MB=round(bytes/1024/1024, 1)
+| table index bucket earliest latest MB has_l2hash state</query>
+        </search>
+        <option name="count">20</option>
+        <format type="color" field="state">
+          <colorPalette type="map">{"thawed":#53A051,"archived":#006D9C,"index_missing":#DC4E41}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row depends="$confirm$">
+    <panel>
+      <title>Restore results</title>
+      <table>
+        <!-- depends on the search itself: a hidden row alone does not stop its search running -->
+        <search depends="$confirm$">
+          <query>| archiverestore index=$index|s$
+| eval earliest=strftime(earliest, "%F %T"), latest=strftime(latest, "%F %T"), MB=round(bytes/1024/1024, 1)
+| table index bucket status earliest latest MB duration_ms reason</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+          <done>
+            <unset token="confirm"></unset>
+            <unset token="form.confirm"></unset>
+          </done>
+          <error>
+            <unset token="confirm"></unset>
+            <unset token="form.confirm"></unset>
+          </error>
+          <fail>
+            <unset token="confirm"></unset>
+            <unset token="form.confirm"></unset>
+          </fail>
+          <cancelled>
+            <unset token="confirm"></unset>
+            <unset token="form.confirm"></unset>
+          </cancelled>
+        </search>
+        <option name="count">50</option>
+        <format type="color" field="status">
+          <colorPalette type="map">{"restored":#53A051,"skipped":#708794,"failed":#DC4E41}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>

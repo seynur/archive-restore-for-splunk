@@ -1,0 +1,6 @@
+<nav search_view="search" color="#3B6E8F">
+  <view name="restore" default="true" />
+  <view name="restored" />
+  <view name="history" />
+  <view name="search" />
+</nav>

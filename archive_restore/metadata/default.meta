@@ -1,0 +1,5 @@
+# Only admins and archive_restore_admin can see the app, its views and its commands.
+# Write commands also check the archive_restore capability at run time.
+[]
+access = read : [ admin, archive_restore_admin ], write : [ admin ]
+export = none

@@ -1,0 +1,76 @@
+<form version="1.1" theme="light">
+  <label>Restored data</label>
+  <description>Thawed buckets of an index. To remove one, enter its bucket name (or * for every thawed bucket overlapping the time range), tick the confirmation and Submit. This removes any thawed bucket of the index, including ones thawed by hand. The archive is never touched.</description>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="dropdown" token="index" searchWhenChanged="false">
+      <label>Index</label>
+      <fieldForLabel>index</fieldForLabel>
+      <fieldForValue>index</fieldForValue>
+      <search>
+        <query>| archivelist | fields index</query>
+      </search>
+    </input>
+    <input type="time" token="tr" searchWhenChanged="false">
+      <label>Time range</label>
+      <default>
+        <earliest>0</earliest>
+        <latest></latest>
+      </default>
+    </input>
+    <input type="text" token="bucket" searchWhenChanged="false">
+      <label>Bucket to delete (name, or * for all in range)</label>
+    </input>
+    <input type="checkbox" token="confirm_delete" searchWhenChanged="false">
+      <label>Delete</label>
+      <choice value="yes">Delete the thawed buckets listed below</choice>
+    </input>
+  </fieldset>
+  <row depends="$index$">
+    <panel>
+      <title>Thawed buckets</title>
+      <table>
+        <search>
+          <query>| dbinspect index=$index|s$
+| search state=thawed
+| eval earliest=strftime(startEpoch, "%F %T"), latest=strftime(endEpoch, "%F %T")
+| table index path earliest latest eventCount sizeOnDiskMB</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+        </search>
+        <option name="count">20</option>
+      </table>
+    </panel>
+  </row>
+  <row depends="$confirm_delete$">
+    <panel>
+      <title>Delete results</title>
+      <table>
+        <!-- depends on the search itself: a hidden row alone does not stop its search running -->
+        <search depends="$confirm_delete$,$bucket$">
+          <query>| archivedelete index=$index|s$ bucket=$bucket|s$ | table index bucket status reason</query>
+          <earliest>$tr.earliest$</earliest>
+          <latest>$tr.latest$</latest>
+          <done>
+            <unset token="confirm_delete"></unset>
+            <unset token="form.confirm_delete"></unset>
+          </done>
+          <error>
+            <unset token="confirm_delete"></unset>
+            <unset token="form.confirm_delete"></unset>
+          </error>
+          <fail>
+            <unset token="confirm_delete"></unset>
+            <unset token="form.confirm_delete"></unset>
+          </fail>
+          <cancelled>
+            <unset token="confirm_delete"></unset>
+            <unset token="form.confirm_delete"></unset>
+          </cancelled>
+        </search>
+        <format type="color" field="status">
+          <colorPalette type="map">{"deleted":#53A051,"not_found":#708794,"failed":#DC4E41}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>
